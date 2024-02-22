@@ -1,0 +1,86 @@
+name: 'Add existing app or test app'
+
+run-name: "Add existing app or test app in [${{ github.ref_name }}]"
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Project name if the repository is setup for multiple projects
+        required: false
+        default: '.'
+      url:
+        description: Direct Download Url of .app or .zip file
+        required: true
+      directCommit:
+        description: Direct Commit?
+        type: boolean
+        default: false
+      useGhTokenWorkflow:
+        description: Use GhTokenWorkflow for PR/Commit?
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+defaults:
+  run:
+    shell: powershell
+
+env:
+  ALGoOrgSettings: ${{ vars.ALGoOrgSettings }}
+  ALGoRepoSettings: ${{ vars.ALGoRepoSettings }}
+
+jobs:
+  AddExistingAppOrTestApp:
+    needs: [ ]
+    runs-on: [ windows-latest ]
+    steps:
+      - name: Dump Workflow Information
+        uses: freddydk/AL-Go-Actions/DumpWorkflowInfo@PPP
+        with:
+          shell: powershell
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize the workflow
+        id: init
+        uses: freddydk/AL-Go-Actions/WorkflowInitialize@PPP
+        with:
+          shell: powershell
+          eventId: "DO0090"
+
+      - name: Read settings
+        uses: freddydk/AL-Go-Actions/ReadSettings@PPP
+        with:
+          shell: powershell
+
+      - name: Read secrets
+        id: ReadSecrets
+        uses: freddydk/AL-Go-Actions/ReadSecrets@PPP
+        with:
+          shell: powershell
+          gitHubSecrets: ${{ toJson(secrets) }}
+          getSecrets: 'TokenForPush'
+          useGhTokenWorkflowForPush: '${{ github.event.inputs.useGhTokenWorkflow }}'
+
+      - name: Add existing app
+        uses: freddydk/AL-Go-Actions/AddExistingApp@PPP
+        with:
+          shell: powershell
+          token: ${{ steps.ReadSecrets.outputs.TokenForPush }}
+          parentTelemetryScopeJson: ${{ steps.init.outputs.telemetryScopeJson }}
+          project: ${{ github.event.inputs.project }}
+          url: ${{ github.event.inputs.url }}
+          directCommit: ${{ github.event.inputs.directCommit }}
+
+      - name: Finalize the workflow
+        if: always()
+        uses: freddydk/AL-Go-Actions/WorkflowPostProcess@PPP
+        with:
+          shell: powershell
+          eventId: "DO0090"
+          telemetryScopeJson: ${{ steps.init.outputs.telemetryScopeJson }}
